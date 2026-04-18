@@ -1,0 +1,16 @@
+node_modules/
+viewer/dist/
+viewer/debug/
+viewer/.cache/
+.cache/
+*.tsbuildinfo
+.DS_Store
+
+# Pipeline artefacts — 16GB of per-paper XML, subagent logs, etc.
+# The viewer bundle (viewer/public/*.json) is checked in so GH Pages
+# can deploy directly; the raw run directory isn't.
+run/
+
+*.log
+tally.json
+search.err

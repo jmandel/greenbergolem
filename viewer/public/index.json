@@ -1,0 +1,22 @@
+{
+  "runs": [
+    {
+      "id": "run-hcq-004",
+      "claimId": "claim-hydroxychloroquine-improves-clinical-outcomes",
+      "canonicalClaim": "Hydroxychloroquine improves clinical outcomes in patients with COVID-19.",
+      "papers": 2142,
+      "edges": 9506,
+      "generatedAt": "2026-04-18T11:36:14.042Z",
+      "bundlePath": "bundle.json"
+    },
+    {
+      "id": "run-greenberg-ibm-demo",
+      "claimId": "claim-ibm-beta-amyloid",
+      "canonicalClaim": "β-amyloid protein is abnormally and specifically present in inclusion body myositis muscle fibres, and is pathogenic for the disease.",
+      "papers": 220,
+      "edges": 682,
+      "generatedAt": "2026-04-18T11:36:13.202Z",
+      "bundlePath": "bundle-greenberg-ibm.json"
+    }
+  ]
+}

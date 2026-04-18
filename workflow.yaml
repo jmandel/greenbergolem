@@ -1,0 +1,108 @@
+version: 6
+# Claim Cartographer — task mesh.
+#
+# Three phases:
+#
+#   1. Research phase (agentic). A `research` subagent explores the
+#      literature and writes a thin authored claim-pack.json — claim,
+#      subclaims, queries, catalog reference, optional refinements.
+#      It does NOT build the corpus.
+#
+#   2. Corpus-build phase (deterministic). Runs each includeQuery to
+#      exhaustion, subtracts excludeQueries, batch-fetches every
+#      remaining paper with full text.
+#
+#   3. Grinding phase. paper-profile → occurrence-extract →
+#      paper-judge → subclaim-label → edge-aggregate → graph-analyze
+#      → render. All read from run/<id>/corpus/ and downstream task
+#      out-dirs.
+
+tasks:
+  research:
+    entrypoint: tasks/research/run.ts
+    retries: 1
+    usesSubagent: true
+
+  corpus-build:
+    entrypoint: tasks/corpus-build/run.ts
+    retries: 2
+    usesSubagent: false
+
+  paper-profile:
+    entrypoint: tasks/paper-profile/run.ts
+    retries: 1
+    concurrency: 1
+    usesSubagent: true
+
+  occurrence-extract:
+    entrypoint: tasks/occurrence-extract/run.ts
+    retries: 2
+    usesSubagent: false
+
+  paper-judge:
+    entrypoint: tasks/paper-judge/run.ts
+    retries: 1
+    concurrency: 1
+    usesSubagent: true
+
+  subclaim-label:
+    entrypoint: tasks/subclaim-label/run.ts
+    retries: 1
+    concurrency: 1
+    usesSubagent: true
+
+  edge-aggregate:
+    entrypoint: tasks/edge-aggregate/run.ts
+    retries: 2
+    usesSubagent: false
+
+  graph-analyze:
+    entrypoint: tasks/graph-analyze/run.ts
+    retries: 2
+    usesSubagent: false
+
+  render:
+    entrypoint: tasks/render/run.ts
+    retries: 1
+    usesSubagent: false
+
+workflows:
+  full:
+    description: "End-to-end: research spec → corpus-build → grinding → render."
+    steps:
+      - task: research
+        outDir: research
+      - task: corpus-build
+        outDir: corpus
+      - task: paper-profile
+        outDir: paper-profile
+      - task: occurrence-extract
+        outDir: occurrence-extract
+      - task: paper-judge
+        outDir: paper-judge
+      - task: subclaim-label
+        outDir: subclaim-label
+      - task: edge-aggregate
+        outDir: edge-aggregate
+      - task: graph-analyze
+        outDir: graph-analyze
+      - task: render
+        outDir: render
+
+  grinding:
+    description: "Everything after corpus-build lands — reuse existing corpus."
+    steps:
+      - task: paper-profile
+        outDir: paper-profile
+      - task: occurrence-extract
+        outDir: occurrence-extract
+      - task: paper-judge
+        outDir: paper-judge
+      - task: subclaim-label
+        outDir: subclaim-label
+      - task: edge-aggregate
+        outDir: edge-aggregate
+      - task: graph-analyze
+        outDir: graph-analyze
+      - task: render
+        outDir: render
