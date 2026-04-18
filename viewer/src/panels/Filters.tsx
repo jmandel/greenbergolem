@@ -1,7 +1,8 @@
-// Top-of-sidebar controls: view mode + year. All other filters (stance,
-// role, group) live inside a collapsed details block so the default
+// Top-of-sidebar controls: view mode + year + density. Role/stance/
+// group filters are collapsed inside a details block so the default
 // view is clean.
 
+import { useEffect, useRef, useState } from "react";
 import { useViewer, type ViewMode } from "../store.ts";
 import { ROLE_COLOR, STANCE_COLOR } from "../lib/palette.ts";
 import type { OccurrenceRole, IntrinsicStance, RunBundle } from "../lib/types.ts";
@@ -106,28 +107,7 @@ export function Filters() {
         />
       </div>
 
-      <div className="control-section">
-        <div className="section-head">
-          <span className="section-title">Density</span>
-          <span className="section-aside">
-            {Math.round(densityFrac * 100)}% · ≈{estimateVisibleEdges(bundle, densityFrac)} edges
-          </span>
-          <Help term="Density">
-            <p>Randomly hides a fraction of non-authority papers (deterministic per paper id, so toggling stays coherent). All authorities are always kept.</p>
-            <p>Default is picked so the visible-edge count lands near Greenberg 2009 fig 1 (~678 edges) — the density human eyes can scan.</p>
-            <p>Edge survival is roughly density² since both endpoints must survive.</p>
-          </Help>
-        </div>
-        <input
-          className="year-slider"
-          type="range"
-          min={5}
-          max={100}
-          step={1}
-          value={Math.round(densityFrac * 100)}
-          onChange={(e) => setDensityFrac(Number(e.target.value) / 100)}
-        />
-      </div>
+      <DensityControl bundle={bundle} densityFrac={densityFrac} setDensityFrac={setDensityFrac} />
 
       <details className="control-section collapsible">
         <summary>
@@ -196,6 +176,69 @@ export function Filters() {
         </div>
         <button className="btn-reset" onClick={reset}>reset filters</button>
       </details>
+    </div>
+  );
+}
+
+// Debounced density slider: the input value updates instantly (smooth
+// drag), but the expensive graph recompute only fires after the user
+// stops dragging. At 100% density on HCQ-004 a single commit is ~2s,
+// so firing it 60× per second during drag would lock the tab.
+function DensityControl({
+  bundle,
+  densityFrac,
+  setDensityFrac,
+}: {
+  bundle: RunBundle | null;
+  densityFrac: number;
+  setDensityFrac: (f: number) => void;
+}) {
+  const [localPct, setLocalPct] = useState(Math.round(densityFrac * 100));
+  const debounceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setLocalPct(Math.round(densityFrac * 100));
+  }, [densityFrac]);
+
+  const schedule = (v: number) => {
+    if (debounceRef.current != null) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      setDensityFrac(v / 100);
+      debounceRef.current = null;
+    }, 250);
+  };
+  const commit = (v: number) => {
+    if (debounceRef.current != null) { window.clearTimeout(debounceRef.current); debounceRef.current = null; }
+    setDensityFrac(v / 100);
+  };
+
+  const pending = Math.round(densityFrac * 100) !== localPct;
+  return (
+    <div className="control-section">
+      <div className="section-head">
+        <span className="section-title">Density</span>
+        <span className="section-aside">
+          {localPct}% · ≈{estimateVisibleEdges(bundle, localPct / 100)} edges
+          {pending && <span className="pending-dot" title="commit pending" />}
+        </span>
+        <Help term="Density">
+          <p>Randomly hides a fraction of non-authority papers (deterministic per paper id, so toggling stays coherent). All authorities are always kept.</p>
+          <p>Default is picked so the visible-edge count lands near Greenberg 2009 fig 1 (~678 edges) — the density human eyes can scan.</p>
+          <p>Edge survival is roughly density² since both endpoints must survive.</p>
+          <p>Committed 250ms after you stop sliding; the layout needs a moment to re-pack thousands of papers.</p>
+        </Help>
+      </div>
+      <input
+        className="year-slider"
+        type="range"
+        min={5}
+        max={100}
+        step={1}
+        value={localPct}
+        onInput={(e) => { const v = Number((e.target as HTMLInputElement).value); setLocalPct(v); schedule(v); }}
+        onMouseUp={(e) => commit(Number((e.target as HTMLInputElement).value))}
+        onTouchEnd={(e) => commit(Number((e.target as HTMLInputElement).value))}
+      />
     </div>
   );
 }

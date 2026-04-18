@@ -80,6 +80,9 @@ header.topbar .spacer { flex: 1; }
 }
 .graph-pane .graph-body { flex: 1; min-height: 0; overflow: hidden; position: relative; background: #fafafa; border-radius: 4px; }
 .graph-pane .graph-body svg { display: block; width: 100%; height: 100%; }
+.graph-pane .graph-body svg .node-g,
+.graph-pane .graph-body svg .edge-g { cursor: pointer; }
+.pending-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e8a547; margin-left: 4px; vertical-align: middle; }
 
 .sidebar {
   background: var(--panel);

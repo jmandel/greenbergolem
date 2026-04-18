@@ -283,13 +283,20 @@ export function GreenbergSvg() {
   );
 
   const focus = selectedPaperId;
+  // Auto-scale the baseline edge opacity so total ink ≈ the Greenberg
+  // fig 1 reference (~678 edges × full opacity). When the user pulls
+  // density to 100% on a 9000-edge graph, this fades edges to keep the
+  // figure scannable. Below the reference count we cap at 0.35 so
+  // individual edges stay visible.
+  const INK_TARGET = 678;
+  const baseOpacity = Math.max(0.05, Math.min(0.35, INK_TARGET / Math.max(1, visibleEdges.length)));
   const edgeEmphasis = (e: EdgeBundle): { stroke: number; opacity: number; bigArrow: boolean } => {
     const isSelected = e.edgeId === selectedEdgeId;
     const isFocused = focus && (e.citingPaperId === focus || e.citedPaperId === focus);
     const inChain = viewMode === "invention-audit" && inventionChain.edges.has(e.edgeId);
     const invention = (e.inventionTypes?.length ?? 0) > 0;
     let base = e.mixedSignal ? 2 : 1.1;
-    let opacity = focus ? (isFocused ? 0.9 : 0.05) : 0.28;
+    let opacity = focus ? (isFocused ? 0.9 : baseOpacity * 0.2) : baseOpacity;
     if (isSelected) { base = 3; opacity = 1; }
     if (viewMode === "invention-audit" && invention) { base = Math.max(base, 2); opacity = Math.max(opacity, 0.7); }
     if (inChain) { base = Math.max(base, 2.6); opacity = 0.95; }
@@ -354,15 +361,10 @@ export function GreenbergSvg() {
           key={e.edgeId}
           data-edge-id={e.edgeId}
           data-edge-endpoints={`${e.citingPaperId} ${e.citedPaperId}`}
+          className="edge-g"
         >
-          <path
-            d={d}
-            fill="none"
-            stroke="transparent"
-            strokeWidth={10}
-            style={{ cursor: "pointer" }}
-            onClick={(ev) => { ev.stopPropagation(); selectEdge(e.edgeId); }}
-          />
+          {/* Wide transparent hit-target; click+hover delegated from SVG root. */}
+          <path d={d} fill="none" stroke="transparent" strokeWidth={10} />
           <path d={d} fill="none" stroke={color} strokeWidth={em.stroke} opacity={em.opacity} markerEnd={`url(#arrow-${markerKey}${em.bigArrow ? "-big" : ""})`} pointerEvents="none" />
           {inv.length > 0 && em.opacity > 0.25 && (
             inv.map((t, i) => (
@@ -375,7 +377,7 @@ export function GreenbergSvg() {
       );
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [visibleEdges, byId, palette, selectedEdgeId, selectedPaperId, viewMode, inventionChain, lensFocus]);
+  ), [visibleEdges, byId, palette, selectedEdgeId, selectedPaperId, viewMode, inventionChain, lensFocus, baseOpacity]);
 
   const nodesJsx = useMemo(() => (
     visiblePositions.map((p) => {
@@ -394,9 +396,8 @@ export function GreenbergSvg() {
           key={p.paperId}
           data-paper={p.paperId}
           data-neighbors={neighborStrById.get(p.paperId)}
+          className="node-g"
           opacity={nodeOpacity(p.paperId)}
-          style={{ cursor: "pointer" }}
-          onClick={(ev) => { ev.stopPropagation(); selectPaper(p.paperId); }}
         >
           {(isLens || isChainEnd) && (
             <circle cx={p.x} cy={p.y} r={p.r + 6} fill="none" stroke={isLens ? "#b58a00" : "#7a1fa2"} strokeWidth={2.2} opacity={0.9} />
@@ -438,7 +439,18 @@ export function GreenbergSvg() {
         xmlns="http://www.w3.org/2000/svg"
         preserveAspectRatio="xMidYMid meet"
         style={{ display: "block", width: "100%", height: "100%", fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif", fontSize: 12 }}
-        onClick={() => { selectPaper(null); selectEdge(null); }}
+        onClick={(ev) => {
+          // Event delegation: the target walks up to either a
+          // data-paper or data-edge-id ancestor. This replaces
+          // per-element onClick handlers (8,000+ allocations on a
+          // large graph).
+          const t = ev.target as Element | null;
+          const node = t?.closest?.("[data-paper]");
+          if (node) { selectPaper(node.getAttribute("data-paper")); return; }
+          const edge = t?.closest?.("[data-edge-id]");
+          if (edge) { selectEdge(edge.getAttribute("data-edge-id")); return; }
+          selectPaper(null); selectEdge(null);
+        }}
         onPointerMove={onPointerMove}
         onPointerLeave={onPointerLeave}
       >
