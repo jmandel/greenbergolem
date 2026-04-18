@@ -9,7 +9,7 @@
 // No "back" concept — every card is a forward click, and an
 // always-present "Overview" link at the top deselects everything.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useViewer } from "../store.ts";
 import { Metrics } from "./Metrics.tsx";
 import { Filters } from "./Filters.tsx";
@@ -26,11 +26,53 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
+      <ClaimCard />
       <SidebarHeader />
       {!selectedPaperId && !selectedEdgeId && <Overview />}
       {selectedPaperId && <PaperPanel paperId={selectedPaperId} />}
       {selectedEdgeId && <EdgePanel edgeId={selectedEdgeId} />}
     </aside>
+  );
+}
+
+function ClaimCard() {
+  const claim = useViewer((s) => s.bundle?.claim);
+  const resolved = useViewer((s) => s.bundle?.resolved);
+  const [showSubs, setShowSubs] = useState(false);
+  if (!claim || !resolved) return null;
+  const subs = resolved.subclaims ?? [];
+  return (
+    <section className="claim-card">
+      <div className="claim-kicker">
+        Focal claim
+        <Help term="Focal claim">
+          <p>Every paper and citation in this network is judged against this single claim.</p>
+          <p>Subclaims are the specific sub-questions the claim decomposes into. Judgments can attach to any combination of them (or none, if the citation engages the claim globally).</p>
+        </Help>
+      </div>
+      <p className="claim-text">{claim.canonicalClaim}</p>
+      {subs.length > 0 && (
+        <>
+          <button
+            type="button"
+            className="claim-subs-toggle"
+            onClick={() => setShowSubs((v) => !v)}
+            aria-expanded={showSubs}
+          >
+            {showSubs ? "−" : "+"} {subs.length} subclaim{subs.length === 1 ? "" : "s"}
+          </button>
+          {showSubs && (
+            <ul className="claim-subs">
+              {subs.map((s) => (
+                <li key={s.id}>
+                  <code>{s.id}</code> <span>{s.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 

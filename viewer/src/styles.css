@@ -283,6 +283,69 @@ details.collapsible > summary:hover .section-title { color: var(--accent); }
 }
 
 /* ────────────────────────────────────────────────────────────
+   Claim card — top of sidebar, always visible
+   ──────────────────────────────────────────────────────────── */
+
+.claim-card {
+  background: #fff8e1;
+  border: 1px solid #e8c547;
+  border-radius: 8px;
+  padding: 10px 12px 8px;
+  margin: 0 0 12px;
+}
+.claim-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  color: #7a5a00;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.claim-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+.claim-subs-toggle {
+  background: transparent;
+  border: 0;
+  padding: 6px 0 0;
+  margin: 0;
+  font: inherit;
+  font-size: 11.5px;
+  color: #7a5a00;
+  cursor: pointer;
+  font-weight: 600;
+}
+.claim-subs-toggle:hover { text-decoration: underline; }
+.claim-subs {
+  list-style: none;
+  padding: 6px 0 0;
+  margin: 0;
+  border-top: 1px dashed #e8c547;
+  margin-top: 6px;
+}
+.claim-subs li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #333;
+  padding: 3px 0;
+  line-height: 1.4;
+}
+.claim-subs code {
+  color: #7a5a00;
+  font-weight: 600;
+  font-size: 10.5px;
+}
+
+/* ────────────────────────────────────────────────────────────
    Sidebar header — breadcrumb (always present)
    ──────────────────────────────────────────────────────────── */
 
