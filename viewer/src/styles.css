@@ -460,7 +460,25 @@ details.collapsible > summary:hover .section-title { color: var(--accent); }
   font-size: 11px;
   color: var(--muted);
   margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
+.paper-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 1px 6px;
+  border: 1px solid #cbddf4;
+  border-radius: 10px;
+  background: #f0f6fe;
+}
+.paper-link:hover { background: #e0eefe; border-color: var(--accent); }
 
 /* ────────────────────────────────────────────────────────────
    Chip row
@@ -654,7 +672,6 @@ details.collapsible > summary:hover .section-title { color: var(--accent); }
 .help-tooltip {
   position: absolute;
   z-index: 30;
-  bottom: calc(100% + 6px);
   left: -10px;
   background: #1f2024;
   color: #f0f0f2;
@@ -670,16 +687,19 @@ details.collapsible > summary:hover .section-title { color: var(--accent); }
   max-width: 80vw;
   white-space: normal;
 }
+.help-tooltip.place-top { bottom: calc(100% + 6px); }
+.help-tooltip.place-bottom { top: calc(100% + 6px); }
 .help-tooltip::before {
   content: "";
   position: absolute;
-  bottom: -5px;
   left: 14px;
   width: 10px;
   height: 10px;
   background: #1f2024;
   transform: rotate(45deg);
 }
+.help-tooltip.place-top::before { bottom: -5px; }
+.help-tooltip.place-bottom::before { top: -5px; }
 .help-term {
   display: block;
   font-size: 11px;

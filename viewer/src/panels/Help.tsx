@@ -1,9 +1,8 @@
-// Tiny (?) icon that opens a definition popover. Used throughout the
-// sidebar for domain terms (authority, lens effect, invention types,
-// evidence groups, …) so readers can learn the vocabulary inline
-// without leaving the figure.
+// Tiny (?) icon that opens a definition popover. The popover floats
+// ABOVE the icon by default but flips below if there isn't enough room
+// above (detected on open).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export function Help({
   term,
@@ -15,7 +14,9 @@ export function Help({
   source?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [placement, setPlacement] = useState<"top" | "bottom">("top");
   const wrapperRef = useRef<HTMLSpanElement | null>(null);
+  const tooltipRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -34,6 +35,17 @@ export function Help({
     };
   }, [open]);
 
+  // Decide placement on open. If the tooltip as-drawn-above would
+  // overflow the viewport top (or the scroll container top), flip
+  // below where there's always room.
+  useLayoutEffect(() => {
+    if (!open || !wrapperRef.current || !tooltipRef.current) return;
+    const btnRect = wrapperRef.current.getBoundingClientRect();
+    const tipH = tooltipRef.current.offsetHeight + 12;
+    const spaceAbove = btnRect.top;
+    setPlacement(spaceAbove < tipH ? "bottom" : "top");
+  }, [open]);
+
   return (
     <span ref={wrapperRef} className="help">
       <button
@@ -46,7 +58,11 @@ export function Help({
         ?
       </button>
       {open && (
-        <span role="tooltip" className="help-tooltip">
+        <span
+          ref={tooltipRef}
+          role="tooltip"
+          className={`help-tooltip place-${placement}`}
+        >
           <strong className="help-term">{term}</strong>
           <span className="help-body">{children}</span>
           {source && <em className="help-source">{source}</em>}

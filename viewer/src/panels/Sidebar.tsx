@@ -17,6 +17,24 @@ import { STANCE_COLOR, ROLE_COLOR, AUTHORITY_FILL, DIVERSION_EDGE_COLOR, type Pa
 import type { EdgeBundle, GraphNode } from "../lib/types.ts";
 import { Help } from "./Help.tsx";
 
+// Pick the best external landing-page URL for a paper, given whatever
+// ids the pipeline captured. Order of preference: PMC (free full
+// text), PubMed, DOI, OpenAlex. Returns null if nothing usable.
+function paperExternalLink(ids: { doi?: string; pmid?: string; pmcid?: string; openAlex?: string } | undefined): { url: string; label: string } | null {
+  if (!ids) return null;
+  if (ids.pmcid) {
+    const v = ids.pmcid.startsWith("PMC") ? ids.pmcid : `PMC${ids.pmcid}`;
+    return { url: `https://pmc.ncbi.nlm.nih.gov/articles/${v}/`, label: "PMC" };
+  }
+  if (ids.pmid) return { url: `https://pubmed.ncbi.nlm.nih.gov/${ids.pmid}/`, label: "PubMed" };
+  if (ids.doi) return { url: `https://doi.org/${ids.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//, "")}`, label: "DOI" };
+  if (ids.openAlex) {
+    const v = ids.openAlex.startsWith("http") ? ids.openAlex : `https://openalex.org/${ids.openAlex}`;
+    return { url: v, label: "OpenAlex" };
+  }
+  return null;
+}
+
 export function Sidebar() {
   const bundle = useViewer((s) => s.bundle);
   const selectedPaperId = useViewer((s) => s.selectedPaperId);
@@ -43,13 +61,7 @@ function ClaimCard() {
   const subs = resolved.subclaims ?? [];
   return (
     <section className="claim-card">
-      <div className="claim-kicker">
-        Focal claim
-        <Help term="Focal claim">
-          <p>Every paper and citation in this network is judged against this single claim.</p>
-          <p>Subclaims are the specific sub-questions the claim decomposes into. Judgments can attach to any combination of them (or none, if the citation engages the claim globally).</p>
-        </Help>
-      </div>
+      <div className="claim-kicker">Focal claim</div>
       <p className="claim-text">{claim.canonicalClaim}</p>
       {subs.length > 0 && (
         <>
@@ -454,14 +466,32 @@ function PaperCard({
       <div className="paper-card-body">
         <div className="paper-card-title">{node.title}</div>
         <div className="paper-card-meta">
-          {node.authors.slice(0, 3).join(", ")}{node.authors.length > 3 ? " et al." : ""}
+          {node.authors.slice(0, 3).join(", ")}{node.authors.length > 3 ? " et al."  : ""}
           {node.venue && <> · <i>{node.venue}</i></>}
         </div>
-        {size === "full" && (
-          <div className="paper-card-id"><code>{node.paperId}</code></div>
-        )}
+        <div className="paper-card-id">
+          {size === "full" && <code>{node.paperId}</code>}
+          <PaperLink ids={node.ids} />
+        </div>
       </div>
     </article>
+  );
+}
+
+function PaperLink({ ids }: { ids: { doi?: string; pmid?: string; pmcid?: string; openAlex?: string } | undefined }) {
+  const link = paperExternalLink(ids);
+  if (!link) return null;
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="paper-link"
+      onClick={(e) => e.stopPropagation()}
+      title={`Open on ${link.label}`}
+    >
+      {link.label} ↗
+    </a>
   );
 }
 
@@ -537,6 +567,7 @@ function CitationList({
                     </span>
                   ))}</>
                 )}
+                {other && <> · <PaperLink ids={other.ids} /></>}
               </div>
             </li>
           );
