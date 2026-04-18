@@ -4,8 +4,22 @@
 
 import { useViewer, type ViewMode } from "../store.ts";
 import { ROLE_COLOR, STANCE_COLOR } from "../lib/palette.ts";
-import type { OccurrenceRole, IntrinsicStance } from "../lib/types.ts";
+import type { OccurrenceRole, IntrinsicStance, RunBundle } from "../lib/types.ts";
 import { Help } from "./Help.tsx";
+
+function estimateVisibleEdges(bundle: RunBundle | null, d: number): number {
+  if (!bundle) return 0;
+  const authIds = new Set(bundle.graph.authority.filter((a) => a.isAuthority).map((a) => a.paperId));
+  let n = 0;
+  for (const e of bundle.graph.edges) {
+    const a = authIds.has(e.citingPaperId);
+    const c = authIds.has(e.citedPaperId);
+    if (a && c) n += 1;
+    else if (a || c) n += d;
+    else n += d * d;
+  }
+  return Math.round(n);
+}
 
 const ROLES: OccurrenceRole[] = ["supportive", "critical", "neutral", "mixed", "unclear"];
 const STANCES: IntrinsicStance[] = ["supportive", "critical", "mixed", "unclear"];
@@ -26,10 +40,12 @@ export function Filters() {
   const stanceFilter = useViewer((s) => s.stanceFilter);
   const groupFilter = useViewer((s) => s.groupFilter);
   const yearRange = useViewer((s) => s.yearRange);
+  const densityFrac = useViewer((s) => s.densityFrac);
   const toggleRole = useViewer((s) => s.toggleRole);
   const toggleStance = useViewer((s) => s.toggleStance);
   const toggleGroup = useViewer((s) => s.toggleGroup);
   const setYearRange = useViewer((s) => s.setYearRange);
+  const setDensityFrac = useViewer((s) => s.setDensityFrac);
   const reset = useViewer((s) => s.resetFilters);
 
   if (!bundle || !palette) return null;
@@ -87,6 +103,29 @@ export function Filters() {
           max={yMax}
           value={yearRange ? yearRange[1] : yMax}
           onChange={(e) => setYearRange([yMin, Number(e.target.value)])}
+        />
+      </div>
+
+      <div className="control-section">
+        <div className="section-head">
+          <span className="section-title">Density</span>
+          <span className="section-aside">
+            {Math.round(densityFrac * 100)}% · ≈{estimateVisibleEdges(bundle, densityFrac)} edges
+          </span>
+          <Help term="Density">
+            <p>Randomly hides a fraction of non-authority papers (deterministic per paper id, so toggling stays coherent). All authorities are always kept.</p>
+            <p>Default is picked so the visible-edge count lands near Greenberg 2009 fig 1 (~678 edges) — the density human eyes can scan.</p>
+            <p>Edge survival is roughly density² since both endpoints must survive.</p>
+          </Help>
+        </div>
+        <input
+          className="year-slider"
+          type="range"
+          min={5}
+          max={100}
+          step={1}
+          value={Math.round(densityFrac * 100)}
+          onChange={(e) => setDensityFrac(Number(e.target.value) / 100)}
         />
       </div>
 

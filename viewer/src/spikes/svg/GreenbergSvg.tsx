@@ -36,6 +36,7 @@ export function GreenbergSvg() {
   const stanceFilter = useViewer((s) => s.stanceFilter);
   const groupFilter = useViewer((s) => s.groupFilter);
   const yearRange = useViewer((s) => s.yearRange);
+  const densityFrac = useViewer((s) => s.densityFrac);
   const selectedPaperId = useViewer((s) => s.selectedPaperId);
   const selectedEdgeId = useViewer((s) => s.selectedEdgeId);
   const selectPaper = useViewer((s) => s.selectPaper);
@@ -77,10 +78,51 @@ export function GreenbergSvg() {
   const layoutMode: LayoutMode =
     viewMode === "stance-split" ? "stance-split" : "greenberg";
 
+  // Deterministic [0,1) hash per paperId — used by the density slider
+  // to randomly thin non-authority papers. Same paper always lands at
+  // the same hash, so toggling the slider stays visually coherent.
+  const paperHashById = useMemo(() => {
+    const out = new Map<string, number>();
+    if (!bundle) return out;
+    for (const p of bundle.graph.papers) {
+      let h = 2166136261;
+      const s = p.paperId;
+      for (let i = 0; i < s.length; i++) { h = (h ^ s.charCodeAt(i)) * 16777619; h >>>= 0; }
+      out.set(p.paperId, h / 0xffffffff);
+    }
+    return out;
+  }, [bundle]);
+
+  const authorityIds = useMemo(() => {
+    const s = new Set<string>();
+    if (!bundle) return s;
+    for (const a of bundle.graph.authority) if (a.isAuthority) s.add(a.paperId);
+    return s;
+  }, [bundle]);
+
+  // Density-thinned graph. Authorities always kept; other papers kept
+  // iff their deterministic hash < densityFrac. Layout recomputes when
+  // density changes so the remaining nodes spread out to fill the
+  // space (instead of leaving "holes" where hidden ones would sit).
+  const thinnedGraph = useMemo(() => {
+    if (!bundle) return null;
+    if (densityFrac >= 1) return bundle.graph;
+    const keep = new Set<string>();
+    for (const p of bundle.graph.papers) {
+      if (authorityIds.has(p.paperId)) { keep.add(p.paperId); continue; }
+      if ((paperHashById.get(p.paperId) ?? 0) < densityFrac) keep.add(p.paperId);
+    }
+    const papers = bundle.graph.papers.filter((p) => keep.has(p.paperId));
+    const edges = bundle.graph.edges.filter((e) => keep.has(e.citingPaperId) && keep.has(e.citedPaperId));
+    const orphanPaperIds = bundle.graph.orphanPaperIds.filter((id) => keep.has(id));
+    const authority = bundle.graph.authority.filter((a) => keep.has(a.paperId));
+    return { ...bundle.graph, papers, edges, orphanPaperIds, authority };
+  }, [bundle, densityFrac, authorityIds, paperHashById]);
+
   const layout = useMemo(
-    () => (bundle && palette ? paperLayout(bundle.graph, palette, layoutMode, opts) : null),
+    () => (thinnedGraph && palette ? paperLayout(thinnedGraph, palette, layoutMode, opts) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bundle, palette, layoutMode, opts.width, opts.heightPerYear, opts.nodeRadius],
+    [thinnedGraph, palette, layoutMode, opts.width, opts.heightPerYear, opts.nodeRadius],
   );
   const authByPaper = useMemo(
     () => new Map((bundle?.graph.authority ?? []).map((a) => [a.paperId, a])),
